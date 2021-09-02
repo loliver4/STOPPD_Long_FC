@@ -1,0 +1,95 @@
+---
+title: "STOPPD Longitudinal rsFC"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r, message=FALSE, warning=FALSE, results=FALSE}
+#library(splitstackshape)
+library(tidyr)
+library(dplyr)
+library(corrr)
+library(psych)
+library(tableone)
+library(corrplot)
+library(ggplot2)
+library(igraph)
+library(brainGraph)
+
+```
+
+```{r, warning=FALSE, results=FALSE}
+# set working dir
+setwd("/projects/loliver/STOPPD_Long_FC/data/processed")
+
+# find baseline RS time series files  # pattern glob2rx("sub-?????????_ses-01_run-*_RS_2mm_glasser_tian_meants.csv")
+# subject IDs with 10 characters are for control repeat/longitudinal scans (extra R in the ID)
+files_RS_ts1 <- list.files(path= ".", recursive=T, full.names=F, pattern="^sub-........._ses-01_run-.*_RS_2mm_glasser_tian_meants\\.csv$")
+
+# confirm csvs aren't empty
+files_RS_ts1[file.size(files_RS_ts1) == 0]
+
+# create list of IDs
+ptlist1 <- substring(files_RS_ts1,5,13)
+
+# read in time series files
+RS_ts1 <- lapply(files_RS_ts1, read.csv, header=F)
+
+# transpose dfs
+RS_ts1 <- lapply(RS_ts1, t)
+
+# Name dfs with participant IDs
+names(RS_ts1) <- ptlist1
+
+```
+
+```{r, warning=FALSE, results=FALSE}
+# set working dir
+setwd("/projects/loliver/STOPPD_Long_FC/data/processed")
+
+# find patient longitudinal RS time series files  # pattern glob2rx("sub-?????????_ses-02_run-*_RS_2mm_glasser_tian_meants.csv")
+# subject IDs with 10 characters are for control repeat/longitudinal scans (extra R in the ID)
+files_RS_ts2 <- list.files(path= ".", recursive=T, full.names=F, pattern="^sub-........._ses-02_run-.*_RS_2mm_glasser_tian_meants\\.csv$")
+
+# confirm csvs aren't empty
+files_RS_ts2[file.size(files_RS_ts2) == 0]
+
+# create list of IDs
+ptlist2 <- substring(files_RS_ts2,5,13)
+
+# read in time series files
+RS_ts2 <- lapply(files_RS_ts2, read.csv, header=F)
+
+# transpose dfs
+RS_ts2 <- lapply(RS_ts2, t)
+
+# Name dfs with participant IDs
+names(RS_ts2) <- ptlist2
+
+
+# keep only those with both baseline and longitudinal data - DC that this is the best move
+RS_ts1 <- RS_ts1[names(RS_ts1) %in% names(RS_ts2)]
+
+```
+
+```{r}
+# read in exclusion info and clinical data
+stpd_clin <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/data/raw/STOPPD_final_clinical_ED.csv", header=T)
+
+
+# 410012 and 320032 should be excluded due to intracranial findings
+
+
+
+```
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
