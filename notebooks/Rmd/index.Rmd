@@ -1,0 +1,13 @@
+---
+title: "STOPPD_Long_FC analyses"
+author: "Lindsay Oliver"
+date: "`r Sys.Date()`"
+output: bookdown::gitbook
+github-repo: https://github.com/loliver4/STOPPD_Long_FC
+description: "This project examines longitudinal changes in functional connectivity in the STOP-PD dataset."
+fontsize: 10pt
+monofontoptions: "Scale=0.5"
+classoption: landscape
+---
+
+# The index page
