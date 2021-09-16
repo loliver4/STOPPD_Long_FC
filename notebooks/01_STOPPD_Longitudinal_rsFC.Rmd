@@ -33,7 +33,7 @@ files_RS_ts1 <- list.files(path= ".", recursive=T, full.names=F, pattern="^sub-.
 files_RS_ts1[file.size(files_RS_ts1) == 0]
 
 # create list of IDs
-ptlist1 <- substring(files_RS_ts1,5,13)
+ptlist1 <- substring(files_RS_ts1,8,13)
 
 # read in time series files
 RS_ts1 <- lapply(files_RS_ts1, read.csv, header=F)
@@ -58,7 +58,7 @@ files_RS_ts2 <- list.files(path= ".", recursive=T, full.names=F, pattern="^sub-.
 files_RS_ts2[file.size(files_RS_ts2) == 0]
 
 # create list of IDs
-ptlist2 <- substring(files_RS_ts2,5,13)
+ptlist2 <- substring(files_RS_ts2,8,13)
 
 # read in time series files
 RS_ts2 <- lapply(files_RS_ts2, read.csv, header=F)
@@ -70,21 +70,70 @@ RS_ts2 <- lapply(RS_ts2, t)
 names(RS_ts2) <- ptlist2
 
 
-# keep only those with both baseline and longitudinal data - DC that this is the best move
-RS_ts1 <- RS_ts1[names(RS_ts1) %in% names(RS_ts2)]
+# keep only those with both baseline and longitudinal data - not actually necessary atm
+#RS_ts1 <- RS_ts1[names(RS_ts1) %in% names(RS_ts2)]
 
 ```
 
 ```{r}
-# read in exclusion info and clinical data
-stpd_clin <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/data/raw/STOPPD_final_clinical_ED.csv", header=T)
+# read in clinical data for those who passed imaging QC (as per /projects/loliver/STOPPD_Long_FC/data/raw/stoppd_usable_rsFC_sublist_Nick.csv)
+stpd_clin <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/data/raw/STOPPD_clinical_fc.csv", header=T)
 
+# exclude 210012 (116 TRs vs 206), 210013 (116 TRs), 220002 (116 TRs), and 320006 (146 TRs) due to incomplete RS ses-01 data? 
+# 220002 also has incomplete RS ses-02 data (116 TRs)  
+stpd_clin <- stpd_clin[stpd_clin$STUDYID!=210012 & stpd_clin$STUDYID!=210013 & stpd_clin$STUDYID!=220002 & stpd_clin$STUDYID!=320006,]
 
-# 410012 and 320032 should be excluded due to intracranial findings
+# exclude 410012 and 320032 due to intracranial findings
+stpd_clin <- stpd_clin[stpd_clin$STUDYID!=410012 & stpd_clin$STUDYID!=320032,]
 
+# remove sub-CMH420018 for now due to missing data for ses-01 # N=58 if we include
+stpd_clin <- stpd_clin[stpd_clin$STUDYID!=420018,]
+
+# keep conn data for eligible participants who passed QC
+RS_ts1 <- RS_ts1[names(RS_ts1) %in% stpd_clin$STUDYID]
+RS_ts2 <- RS_ts2[names(RS_ts2) %in% stpd_clin$STUDYID]
+
+# identify participant with missing conn data - sub-CMH420018 is missing fmriprep func data for ses-01 in the archive, but this should exist (in touch with Michael re this)
+stpd_clin[!(stpd_clin$STUDYID %in% names(RS_ts1)),]
+
+# read in Tian and Glasser ROI labels (392)
+rois <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/data/raw/Glasser_Tian_roi_info.csv", header=T)
+
+```
+
+```{r}
+# generate baseline correlation matrices for each participant
+cor_rs1  <- lapply(RS_ts1, cor)
+
+# igraph
+# convert to matrices (igraph won't make graphs out of the lists)
+# generate igraph graphs (matrices for each individual) - start with cortical ROIs only
+
+# for pos corrs
+files_cor_EA_pos_mat <- files_cor_EA_pos
+
+for (i in names(files_cor_EA_pos_mat)) {
+  files_cor_EA_pos_mat[[i]] <- lapply(files_cor_EA_pos[[i]],as.matrix)
+  files_cor_EA_pos_mat[[i]] <- lapply(files_cor_EA_pos_mat[[i]],graph_from_adjacency_matrix, weighted = T, 
+                                      mode = "undirected", diag=F, add.colnames = NULL, add.rownames = NA)
+  for (t in names(files_cor_EA_pos_mat[[i]])) {
+    V(files_cor_EA_pos_mat[[i]][[t]])$strength <- strength(files_cor_EA_pos_mat[[i]][[t]])
+    V(files_cor_EA_pos_mat[[i]][[t]])$community <- as.vector(shen_nodes_info$Overall_Lmod)
+    files_cor_EA_pos_mat[[i]][[t]]$name <- t
+    files_cor_EA_pos_mat[[i]][[t]]$tstrength <- sum(V(files_cor_EA_pos_mat[[i]][[t]])$strength)
+  }
+}
 
 
 ```
+
+```{r}
+# generate longitudinal correlation matrices for each participant
+cor_rs2  <- lapply(RS_ts2, cor)
+
+
+```
+
 
 
 
