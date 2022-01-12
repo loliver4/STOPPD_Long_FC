@@ -33,6 +33,7 @@ Processing and Analysis Scripts
 -----------------------------------
 
 Code
+
 Cifti clean resting-state data, including 36p regression and 2 mm smoothing: cifti_clean_RS_2mm.sh
 
 Done separately for CMH participants as they still need 4 TRs dropped but other sites do not: cifti_clean_RS_2mm_CMH.sh
@@ -41,6 +42,7 @@ Extract resting-state time series data from each glasser and tian scale II ROI: 
   
   
 Notebooks
+
 Generation of correlation matrices to calculate graph metrics: 01_STOPPD_Longitudinal_rsFC.Rmd
 
 Generation of graph metrics using BCT (in matlab):
