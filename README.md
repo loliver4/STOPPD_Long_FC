@@ -34,24 +34,22 @@ Processing and Analysis Scripts
 
 Code
 
-Cifti clean resting-state data, including 36p regression and 2 mm smoothing: cifti_clean_RS_2mm.sh
+cifti_clean_RS_2mm.sh: Cifti clean resting-state data, including 36p regression and 2 mm smoothing
 
-Done separately for CMH participants as they still need 4 TRs dropped but other sites do not: cifti_clean_RS_2mm_CMH.sh
+cifti_clean_RS_2mm_CMH.sh: Done separately for CMH participants as they still need 4 TRs dropped but other sites do not
 
-Extract resting-state time series data from each glasser and tian scale II ROI: extract_time_series_RS_2mm_glasser_tian.sh
-  
+extract_time_series_RS_2mm_glasser_tian.sh: Extract resting-state time series data from each glasser and tian scale II ROI
+
   
 Notebooks
 
-Generation of correlation matrices to calculate graph metrics: 01_STOPPD_Longitudinal_rsFC.Rmd
+01_STOPPD_Longitudinal_rsFC.Rmd: Generation of correlation matrices to calculate graph metrics
 
-Generation of graph metrics using BCT (in matlab):
-02_bct_graph_metrics_ses01_pos.m
-02_bct_graph_metrics_ses02_pos.m
+02_bct_graph_metrics_ses01_pos.m and 02_bct_graph_metrics_ses02_pos.m: Generation of graph metrics using BCT (in matlab):
 
-Analyses of graph metrics at 15% density only (following Voinekos et al., 2020): 03_STOPPD_GraphMetrics_pos.Rmd
+03_STOPPD_GraphMetrics_pos.Rmd: Analyses of graph metrics at 15% density (following Voinekos et al., 2020)
 
-Analyses of graph metrics across densities 5-35%: 04_STOPPD_GraphMetrics_pos_thresholds.Rmd
+04_STOPPD_GraphMetrics_pos_thresholds.Rmd: Analyses of graph metrics across densities
 
-Analyses of within- and between-network connectivity: 05_STOPPD_Longitudinal_rsFC_WithBetConn.Rmd
+05_STOPPD_Longitudinal_rsFC_WithBetConn.Rmd: Analyses of within- and between-network connectivity
 
