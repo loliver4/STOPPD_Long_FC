@@ -45,7 +45,7 @@ Notebooks
 
 01_STOPPD_Longitudinal_rsFC.Rmd: Generation of correlation matrices to calculate graph metrics
 
-02_bct_graph_metrics_ses01_pos.m and 02_bct_graph_metrics_ses02_pos.m: Generation of graph metrics using BCT (in matlab):
+02_bct_graph_metrics_ses01_pos.m and 02_bct_graph_metrics_ses02_pos.m: Generation of graph metrics using BCT (in matlab)
 
 03_STOPPD_GraphMetrics_pos.Rmd: Analyses of graph metrics at 15% density (following Voinekos et al., 2020)
 
