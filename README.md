@@ -1,7 +1,7 @@
 STOPPD Longitudinal Functional Connectivity
 ===============================================
 
-This project examines longitudinal changes in functional connectivity in the STOP-PD dataset.
+This project examines longitudinal changes in resting state functional connectivity as a function of antipsychotic medication randomization in the STOP-PD dataset.
 
 Created by Lindsay Oliver lindsay.oliver@camh.ca
 
