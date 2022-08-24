@@ -14,6 +14,7 @@ library(psych)
 library(tableone)
 library(corrplot)
 library(ggplot2)
+library(effsize)
 library(lme4)
 library(lmerTest)
 library(broom)
@@ -89,6 +90,8 @@ stpd_clin <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/data/raw/STOPPD_c
                        levels = c("Sustained Remisson","Relapse", "Discontinued_Remission"),
                        labels = c("Sustained Remisson","Relapse", "Discontinued"))) 
 
+# drop added hamd scores so as not to interfere with for loops below
+stpd_clin <- stpd_clin[,c(1:8,12)]
 
 # exclude 210012 (116 TRs vs 206), 210013 (116 TRs), 220002 (116 TRs), and 320006 (146 TRs) due to incomplete RS ses-01 data
 # 220002 also has incomplete RS ses-02 data (116 TRs)  
@@ -266,13 +269,16 @@ diff_net_conn$STUDYID <- row.names(diff_net_conn)
 diff_net_conn <- diff_net_conn[,c(39,1:38)]
 clin_diff_conn <- merge(stpd_clin,diff_net_conn,by="STUDYID")
 
+# merge t1, t2, and diff data
+clin_conn_comb <- merge(clin_conn,diff_net_conn,by="STUDYID")
+
 # write out csv with conn and clinical data 
-#write.csv(clin_net_conn, '/projects/loliver/STOPPD_Long_FC/data/processed/behavioural/STOPPD_clinical_net_conn_11-15-2021.csv', row.names = FALSE)
+#write.csv(clin_conn_comb, '/projects/loliver/STOPPD_Long_FC/data/processed/behavioural/STOPPD_clin_net_conn_with_bet_diff_07-05-2022.csv', row.names = FALSE)
 
 ```
 
 ```{r}
-# analyses as per the JAMA psych paper (following Erin's github) 
+# analyses as per the JAMA psych paper (https://github.com/TIGRLab/STOPPD-MainPaper/) 
 
 # Erin's plot colours
 RandomArmColors = c("#e6ab02", "#386cb0")
@@ -347,7 +353,7 @@ clin_conn_long$model_days <- ifelse(clin_conn_long$time == "t1", 1, clin_conn_lo
 
 ```{r}
 # primary analyses - mixed linear model - conn treatment x time in full group 
-# looking at within-network conn and between each network and all 13 others here
+# looking at within-network conn and between each network and all 12 others here
 
 # print full model outputs
 for (i in colnames(clin_conn_long[,10:35])) {
@@ -412,6 +418,41 @@ ggplot(clin_conn_long, aes(x=model_days, y=Bet_Lang, fill = RandomArm)) +
   scale_colour_manual(values = RandomArmColors) +
   scale_fill_manual(values = RandomArmColors) +
   scale_shape_manual(values = c(21:23)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
+
+```{r}
+# plot clinical outcome x time - olanzapine only 
+ggplot(clin_conn_long[clin_conn_long$RandomArm=="Olanzapine",], aes(x=model_days, y=Bet_Vis2, fill = PlotLabel)) + 
+  geom_point(aes(shape = PlotLabel)) + 
+  geom_line(aes(group=STUDYID, color = PlotLabel), alpha = 0.5) + 
+  geom_smooth(aes(color = PlotLabel), method="lm", fill = "lightgrey") +
+  labs(x ="Days between MRIs", 
+       y = "Secondary Visual Between-Network Connectivity",
+       #shape = "Status at scan 2",
+       color = "ClinicalOutcome") +
+  guides(fill=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:24)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+# plot clinical outcome x time - placebo only 
+ggplot(clin_conn_long[clin_conn_long$RandomArm=="Placebo",], aes(x=model_days, y=Bet_Vis2, fill = PlotLabel)) + 
+  geom_point(aes(shape = PlotLabel)) + 
+  geom_line(aes(group=STUDYID, color = PlotLabel), alpha = 0.5) + 
+  geom_smooth(aes(color = PlotLabel), method="lm", fill = "lightgrey") +
+  labs(x ="Days between MRIs", 
+       y = "Secondary Visual Between-Network Connectivity",
+       #shape = "Status at scan 2",
+       color = "ClinicalOutcome") +
+  guides(fill=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:24)) +
   theme_bw() +
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
 
@@ -757,12 +798,12 @@ ggplot(rel_clin_diff_conn, aes(x= RandomArm, y = SM_diff, fill = RandomArm)) +
      theme_bw() +
      theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
 
-ggplot(rel_clin_diff_conn, aes(x= RandomArm, y = Bet_Vis2, fill = RandomArm)) + 
+ggplot(rel_clin_diff_conn, aes(x= RandomArm, y = Bet_Vis2_diff, fill = RandomArm)) + 
      geom_boxplot(outlier.shape = NA, alpha = 0.0001) + 
      geom_dotplot(binaxis = 'y', stackdir = 'center') +
      geom_hline(yintercept = 0) +
      labs( x=NULL,      
-           y = bquote('Change in SM Within Network Connectivity'),
+           y = bquote('Change in Vis2 Between Network Connectivity'),
            fill = "Group") +
      scale_fill_manual(values = RandomArmColors) +
      scale_shape_manual(values = c(21)) +
@@ -834,7 +875,124 @@ print(olan_df)
 
 ```
 
+```{r}
+# exploratory analysis - t-tests for diffs by clinical outcome across treatment groups N=53 (32 remitters vs 21 relapsers)
 
+treat_clin_diff_conn <- clin_diff_conn[clin_diff_conn$ClinicalOutcome=="Remission" | clin_diff_conn$ClinicalOutcome=="Relapse",]
+
+for (i in colnames(treat_clin_diff_conn[,10:35])) {
+  print(i)
+  t.test(get(i) ~ ClinicalOutcome, data = treat_clin_diff_conn, paired=F) %>% print()
+}
+
+```
+
+```{r}
+# generate df with stats across treatment groups
+treat_df <- data.frame(matrix(NA, nrow = 26, ncol = 5))
+rownames(treat_df) <- colnames(treat_clin_diff_conn[,10:35])
+colnames(treat_df) <- c("mean_rem","mean_rel","t","df","p")
+
+for (i in colnames(treat_clin_diff_conn[,10:35])) {
+  treat_df[i,] <- c(tidy(t.test(get(i) ~ ClinicalOutcome, data = treat_clin_diff_conn, paired=F))[,c("estimate1","estimate2","statistic","parameter","p.value")])
+}
+
+# add fdr-corrected p values 
+treat_df$p_fdr <- p.adjust(treat_df$p, method = "fdr")
+
+print(treat_df)
+
+#write.csv(treat_df,file="/projects/loliver/STOPPD_Long_FC/results/exp_acrosstreat_withbetconn.csv")
+
+```
+
+```{r}
+# exploratory analysis - t-tests for diffs in remitters across treatment groups N = 32
+
+rem_clin_conn_long <- clin_conn_long[clin_conn_long$ClinicalOutcome=="Remission",]
+
+for (i in colnames(rem_clin_conn_long[,10:35])) {
+  print(i)
+  t.test(get(i) ~ time, data = rem_clin_conn_long, paired=T) %>% print()
+}
+
+# calculate cohen's d for these diffs
+for (i in colnames(rem_clin_conn_long[,10:35])) {
+  print(i)
+  cohen.d(get(i) ~ time, data = rem_clin_conn_long) %>% print()
+}
+
+# means and SDs for Bet_DAtt at T1 and T2
+mean(rem_clin_conn_long[rem_clin_conn_long$time=="t1","Bet_DAtt"])
+sd(rem_clin_conn_long[rem_clin_conn_long$time=="t1","Bet_DAtt"])
+mean(rem_clin_conn_long[rem_clin_conn_long$time=="t2","Bet_DAtt"])
+sd(rem_clin_conn_long[rem_clin_conn_long$time=="t2","Bet_DAtt"])
+
+```
+
+```{r}
+# generate df with stats in remitters across treatment groups
+# mean diffs are t1-t2 (not intuitive; negative reflects an increase)
+rem_df <- data.frame(matrix(NA, nrow = 26, ncol = 4))
+rownames(rem_df) <- colnames(rem_clin_conn_long[,10:35])
+colnames(rem_df) <- c("mean_diff","t","df","p")
+
+for (i in colnames(rem_clin_conn_long[,10:35])) {
+  rem_df[i,] <- c(tidy(t.test(get(i) ~ time, data = rem_clin_conn_long, paired=T))[,c("estimate","statistic","parameter","p.value")])
+}
+
+# add fdr-corrected p values 
+rem_df$p_fdr <- p.adjust(rem_df$p, method = "fdr")
+
+print(rem_df)
+
+#write.csv(rem_df,file="/projects/loliver/STOPPD_Long_FC/results/exp_remtime_withbetconn.csv")
+
+```
+
+```{r}
+# exploratory analysis - t-tests for diffs in relapsers across treatment groups N = 21
+
+rel_clin_conn_long <- clin_conn_long[clin_conn_long$ClinicalOutcome=="Relapse",]
+
+for (i in colnames(rel_clin_conn_long[,10:35])) {
+  print(i)
+  t.test(get(i) ~ time, data = rel_clin_conn_long, paired=T) %>% print()
+}
+
+# calculate cohen's d for these diffs
+for (i in colnames(rel_clin_conn_long[,10:35])) {
+  print(i)
+  cohen.d(get(i) ~ time, data = rel_clin_conn_long) %>% print()
+}
+
+# means and SDs for FrPr at T1 and T2
+mean(rel_clin_conn_long[rel_clin_conn_long$time=="t1","FrPr"])
+sd(rel_clin_conn_long[rel_clin_conn_long$time=="t1","FrPr"])
+mean(rel_clin_conn_long[rel_clin_conn_long$time=="t2","FrPr"])
+sd(rel_clin_conn_long[rel_clin_conn_long$time=="t2","FrPr"])
+
+```
+
+```{r}
+# generate df with stats in relapsers across treatment groups 
+# mean diffs are t1-t2 (not intuitive; negative reflects an increase)
+rel_df <- data.frame(matrix(NA, nrow = 26, ncol = 4))
+rownames(rel_df) <- colnames(rel_clin_conn_long[,10:35])
+colnames(rel_df) <- c("mean_diff","t","df","p")
+
+for (i in colnames(rel_clin_conn_long[,10:35])) {
+  rel_df[i,] <- c(tidy(t.test(get(i) ~ time, data = rel_clin_conn_long, paired=T))[,c("estimate","statistic","parameter","p.value")])
+}
+
+# add fdr-corrected p values 
+rel_df$p_fdr <- p.adjust(rel_df$p, method = "fdr")
+
+print(rel_df)
+
+#write.csv(rel_df,file="/projects/loliver/STOPPD_Long_FC/results/exp_reltime_withbetconn.csv")
+
+```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.

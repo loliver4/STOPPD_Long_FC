@@ -174,6 +174,7 @@ all_q <- clin_gt_15 %>%
 
 all_q_lmer <- lmer(q ~ RandomArm*model_days + sex + age + (1|site) + (1|STUDYID), data = all_q)
 summary(all_q_lmer)
+
 ```
 
 ```{r}
@@ -629,6 +630,175 @@ print(olan_df)
 
 ```
 
+```{r}
+# exploratory analysis - t-tests for diffs by clinical outcome across treatment groups N=53 (32 remitters vs 21 relapsers)
+treat_clin_gt_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Remission" | clin_gt_15$ClinicalOutcome=="Relapse",]
+
+for (i in colnames(treat_clin_gt_15[,20:23])) {
+  print(i)
+  t.test(get(i) ~ ClinicalOutcome, data = treat_clin_gt_15, paired=F) %>% print()
+}
+
+```
+
+```{r}
+# generate df with stats across treatment groups
+treat_df <- data.frame(matrix(NA, nrow = 4, ncol = 5))
+rownames(treat_df) <- colnames(treat_clin_gt_15[,20:23])
+colnames(treat_df) <- c("mean_rem","mean_rel","t","df","p")
+
+for (i in colnames(treat_clin_gt_15[,20:23])) {
+  treat_df[i,] <- c(tidy(t.test(get(i) ~ ClinicalOutcome, data = treat_clin_gt_15, paired=F))[,c("estimate1","estimate2","statistic","parameter","p.value")])
+}
+
+# add fdr-corrected p values 
+treat_df$p_fdr <- p.adjust(treat_df$p, method = "fdr")
+
+print(treat_df)
+
+#write.csv(treat_df,file="/projects/loliver/STOPPD_Long_FC/results/exp_acrosstreat_graphmets.csv")
+
+```
+
+```{r fig.height=4, fig.width=7}
+# boxplot of difference in graph metrics (y axis) by clinical outcome group (x axis) across treatments
+
+treat_clin_gt_15 %>% 
+ggplot(aes(x= ClinicalOutcome, y = ge_diff, fill = ClinicalOutcome)) + 
+     geom_boxplot(outlier.shape = NA, alpha = 0.0001) + 
+     geom_dotplot(binaxis = 'y', stackdir = 'center') +
+     geom_hline(yintercept = 0) +
+     labs( x=NULL,      
+           y = bquote('Change in Global Efficiency'),
+           fill = "Group") +
+     scale_fill_manual(values = c("springgreen1","mediumpurple1")) +
+     scale_shape_manual(values = c(21)) +
+     theme_bw() +
+     theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
+
+treat_clin_gt_15 %>% 
+ggplot(aes(x = ClinicalOutcome, y = ge_diff, fill = RandomArm)) + 
+     geom_boxplot(outlier.shape = NA, alpha = 0.0001) +
+     geom_dotplot(binaxis = 'y', stackdir = 'center') +
+     geom_hline(yintercept = 0) +
+     labs( x=NULL,      
+           y = bquote('Change in Global Efficiency'),
+           fill = "Group") +
+     scale_fill_manual(values = RandomArmColors) +
+     scale_shape_manual(values = c(21)) +
+     theme_bw() +
+     theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
+
+```
+
+```{r}
+# exploratory analysis - t-tests for diffs in remitters across treatment groups N=32
+# mean diffs are t1-t2 (not intuitive; negative reflects an increase)
+# ge
+rem_ge_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Remission",] %>%
+    gather(oldcolname, ge, ge_t1, ge_t2) %>%
+    mutate(time = if_else(oldcolname == "ge_t1", "t1", "t2"))
+
+rem_ge_time <- t.test(ge ~ time, data = rem_ge_15, paired=T)
+print(rem_ge_time)
+
+p.adjust(.0216,method="fdr",n=4)
+
+# cc
+rem_cc_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Remission",] %>%
+    gather(oldcolname, cc, cc_t1, cc_t2) %>%
+    mutate(time = if_else(oldcolname == "cc_t1", "t1", "t2"))
+
+rem_cc_time <- t.test(cc ~ time, data = rem_cc_15, paired=T)
+print(rem_cc_time)
+
+# trans
+rem_trans_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Remission",] %>%
+    gather(oldcolname, trans, trans_t1, trans_t2) %>%
+    mutate(time = if_else(oldcolname == "trans_t1", "t1", "t2"))
+
+rem_trans_time <- t.test(trans ~ time, data = rem_trans_15, paired=T)
+print(rem_trans_time)
+
+# mod
+rem_q_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Remission",] %>%
+    gather(oldcolname, q, q_t1, q_t2) %>%
+    mutate(time = if_else(oldcolname == "q_t1", "t1", "t2"))
+
+rem_q_time <- t.test(q ~ time, data = rem_q_15, paired=T)
+print(rem_q_time)
+
+```
+
+```{r}
+# Plots for change in ge in remitters
+
+rem_ge_15 %>% 
+ggplot(aes(x= time, y = ge, fill = time)) + 
+     geom_boxplot(outlier.shape = NA, alpha = 0.0001) + 
+     geom_dotplot(binaxis = 'y', stackdir = 'center') +
+     geom_hline(yintercept = 0) +
+     labs( x=NULL,      
+           y = bquote('Global Efficiency'),
+           fill = "Group") +
+     scale_fill_manual(values = c("springgreen1","mediumpurple1")) +
+     scale_shape_manual(values = c(21)) +
+     theme_bw() +
+     theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
+
+```
+
+```{r}
+# exploratory analysis - t-tests for diffs in relapsers across treatment groups N=21
+# ge
+rel_ge_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Relapse",] %>%
+    gather(oldcolname, ge, ge_t1, ge_t2) %>%
+    mutate(time = if_else(oldcolname == "ge_t1", "t1", "t2"))
+
+rel_ge_time <- t.test(ge ~ time, data = rel_ge_15, paired=T)
+print(rel_ge_time)
+
+# cc
+rel_cc_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Relapse",] %>%
+    gather(oldcolname, cc, cc_t1, cc_t2) %>%
+    mutate(time = if_else(oldcolname == "cc_t1", "t1", "t2"))
+
+rel_cc_time <- t.test(cc ~ time, data = rel_cc_15, paired=T)
+print(rel_cc_time)
+
+# trans
+rel_trans_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Relapse",] %>%
+    gather(oldcolname, trans, trans_t1, trans_t2) %>%
+    mutate(time = if_else(oldcolname == "trans_t1", "t1", "t2"))
+
+rel_trans_time <- t.test(trans ~ time, data = rel_trans_15, paired=T)
+print(rel_trans_time)
+
+# mod
+rel_q_15 <- clin_gt_15[clin_gt_15$ClinicalOutcome=="Relapse",] %>%
+    gather(oldcolname, q, q_t1, q_t2) %>%
+    mutate(time = if_else(oldcolname == "q_t1", "t1", "t2"))
+
+rel_q_time <- t.test(q ~ time, data = rel_q_15, paired=T)
+print(rel_q_time)
+
+```
+
+```{r}
+# generate df with stats for treatment x time interaction  ### not updated ###
+trxti_df <- data.frame(rbind(summary(all_ge_lmer)[[10]][6,],summary(all_cc_lmer)[[10]][6,],summary(all_trans_lmer)[[10]][6,],summary(all_q_lmer)[[10]][6,]))
+rownames(trxti_df) <- c("ge","cc","trans","mod")
+colnames(trxti_df) <- c("beta","SE","df","t","p")
+
+# add fdr-corrected p values and reorder columns 
+trxti_df$p_fdr <- p.adjust(trxti_df$p, method = "fdr")
+trxti_df <- trxti_df[,c(1,2,4,3,5,6)]
+
+print(trxti_df)
+
+#write.csv(trxti_df,file="/projects/loliver/STOPPD_Long_FC/results/treatxtime_graphmets.csv")
+
+```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
