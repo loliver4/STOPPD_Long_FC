@@ -9,7 +9,7 @@ module load ciftify
 
 # extract resting-state time series data from each glasser and tian scale II ROI
 sub_dir=$(ls -d -- /projects/loliver/STOPPD_Long_FC/data/processed/sub*/) # lists subject directories
-#sub_dir=$(ls -d -- /projects/loliver/STOPPD_Long_FC/data/processed/sub-MAS210013)
+#sub_dir=$(ls -d -- /projects/loliver/STOPPD_Long_FC/data/processed/sub-CMH420018)
 
 for dir in ${sub_dir}; do
     subj=$(basename ${dir})

@@ -12,7 +12,7 @@ module load connectome-workbench/1.4.1
 # done separately for CMH participants as they still need 4 TRs dropped but other sites don't
 sub_dir=$(ls -d -- /projects/loliver/STOPPD_Long_FC/data/processed/sub-C*/) # lists CMH subject directories
 
-#sub_dir=$(ls -d -- /projects/loliver/STOPPD_Long_FC/data/processed/sub-CMH410010)
+#sub_dir=$(ls -d -- /projects/loliver/STOPPD_Long_FC/data/processed/sub-CMH420018)
 
 for dir in ${sub_dir}; do
     subj=$(basename ${dir})
