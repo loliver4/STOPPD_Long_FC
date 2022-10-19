@@ -349,10 +349,13 @@ colnames(clin_conn_long_t2)[10:47] <- sub("_t2", "", colnames(clin_conn_long_t2)
 clin_conn_long <- rbind(clin_conn_long_t1,clin_conn_long_t2)
 clin_conn_long$model_days <- ifelse(clin_conn_long$time == "t1", 1, clin_conn_long$dateDiff)
 
+# exclude 410015 (looks like an outlier and only in for 9 days) # results are consistent - Bet_Vis2 finding just more sig
+#clin_conn_long <- clin_conn_long[clin_conn_long$STUDYID!="410015",]
+
 ```
 
 ```{r}
-# primary analyses - mixed linear model - conn treatment x time in full group 
+# primary analyses - mixed linear model - conn treatment x time in full group (N=58)
 # looking at within-network conn and between each network and all 12 others here
 
 # print full model outputs
@@ -361,6 +364,7 @@ for (i in colnames(clin_conn_long[,10:35])) {
   assign(paste0("all_lmer_",i), lmer(get(i) ~ RandomArm*model_days + sex + age + (1|site) + (1|STUDYID), 
   data = clin_conn_long)) %>% summary() %>% print()
 }
+
 ```
 
 ```{r}
@@ -401,6 +405,7 @@ ggplot(clin_conn_long, aes(x=model_days, y=Bet_Vis2, fill = RandomArm)) +
        y = "Secondary Visual Between-Network Connectivity",
        shape = "Status at scan 2",
        color = "Group") +
+  guides(fill=FALSE) +
   scale_colour_manual(values = RandomArmColors) +
   scale_fill_manual(values = RandomArmColors) +
   scale_shape_manual(values = c(21:23)) +
@@ -415,6 +420,7 @@ ggplot(clin_conn_long, aes(x=model_days, y=Bet_Lang, fill = RandomArm)) +
        y = "Language Between-Network Connectivity",
        shape = "Status at scan 2",
        color = "Group") +
+ guides(fill=FALSE) +
   scale_colour_manual(values = RandomArmColors) +
   scale_fill_manual(values = RandomArmColors) +
   scale_shape_manual(values = c(21:23)) +
@@ -424,37 +430,24 @@ ggplot(clin_conn_long, aes(x=model_days, y=Bet_Lang, fill = RandomArm)) +
 ```
 
 ```{r}
-# plot clinical outcome x time - olanzapine only 
-ggplot(clin_conn_long[clin_conn_long$RandomArm=="Olanzapine",], aes(x=model_days, y=Bet_Vis2, fill = PlotLabel)) + 
-  geom_point(aes(shape = PlotLabel)) + 
-  geom_line(aes(group=STUDYID, color = PlotLabel), alpha = 0.5) + 
-  geom_smooth(aes(color = PlotLabel), method="lm", fill = "lightgrey") +
-  labs(x ="Days between MRIs", 
-       y = "Secondary Visual Between-Network Connectivity",
-       #shape = "Status at scan 2",
-       color = "ClinicalOutcome") +
-  guides(fill=FALSE) +
-  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
-  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
-  scale_shape_manual(values = c(21:24)) +
-  theme_bw() +
-  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+# post hoc analyses - time in olanzapine only for Bet_Vis2
+# mixed linear model 
+summary(lmer(Bet_Vis2 ~ model_days + sex + age + (1|site) + (1|STUDYID), 
+  data = clin_conn_long[clin_conn_long$RandomArm=="Olanzapine",]))
 
-# plot clinical outcome x time - placebo only 
-ggplot(clin_conn_long[clin_conn_long$RandomArm=="Placebo",], aes(x=model_days, y=Bet_Vis2, fill = PlotLabel)) + 
-  geom_point(aes(shape = PlotLabel)) + 
-  geom_line(aes(group=STUDYID, color = PlotLabel), alpha = 0.5) + 
-  geom_smooth(aes(color = PlotLabel), method="lm", fill = "lightgrey") +
-  labs(x ="Days between MRIs", 
-       y = "Secondary Visual Between-Network Connectivity",
-       #shape = "Status at scan 2",
-       color = "ClinicalOutcome") +
-  guides(fill=FALSE) +
-  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
-  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
-  scale_shape_manual(values = c(21:24)) +
-  theme_bw() +
-  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+# t-test for t2 vs t1 diff
+t.test(Bet_Vis2 ~ time,data=clin_conn_long[clin_conn_long$RandomArm=="Olanzapine",],paired=T)
+
+```
+
+```{r}
+# post hoc analyses - time in placebo only for Bet_Vis2
+# mixed linear model 
+summary(lmer(Bet_Vis2 ~ model_days + sex + age + (1|site) + (1|STUDYID), 
+  data = clin_conn_long[clin_conn_long$RandomArm=="Placebo",]))
+
+# t-test for t2 vs t1 diff
+t.test(Bet_Vis2 ~ time,data=clin_conn_long[clin_conn_long$RandomArm=="Placebo",],paired=T)
 
 ```
 
@@ -738,6 +731,108 @@ print(rem_tr_sens3_df)
 
 ```
 
+```{r}
+# exploratory analysis - mixed linear model - clinical outcome x time for all networks (excluding off protocol N=53; not a meaningful clinical outcome)
+
+# print full model outputs
+for (i in colnames(clin_conn_long[,10:35])) {
+  print(i)
+  assign(paste0("exp_lmer_",i), lmer(get(i) ~ ClinicalOutcome*model_days + sex + age + (1|site) + (1|STUDYID), 
+  data = clin_conn_long[clin_conn_long$ClinicalOutcome != "Off protocol",])) %>% summary() %>% print()
+}
+
+```
+
+```{r}
+# generate df with stats for clinical outcome x time interaction 
+clinxti_df <- data.frame(matrix(NA, nrow = 5, ncol = 26))
+colnames(clinxti_df) <- colnames(clin_conn_long[,10:35])
+rownames(clinxti_df) <- c("beta","SE","df","t","p")
+
+for (i in colnames(clin_conn_long[,10:35])) {
+  clinxti_df[[i]] <- as.vector(summary(lmer(get(i) ~ ClinicalOutcome*model_days + sex + age + (1|site) + (1|STUDYID), 
+  data = clin_conn_long[clin_conn_long$ClinicalOutcome != "Off protocol",]))[[10]][6,])
+}
+
+# transpose df, add fdr-corrected p values, and reorder columns 
+clinxti_df <- data.frame(t(clinxti_df))
+clinxti_df$p_fdr <- p.adjust(clinxti_df$p, method = "fdr")
+clinxti_df <- clinxti_df[,c(1,2,4,3,5,6)]
+
+print(clinxti_df)
+
+#write.csv(clinxti_df,file="/projects/loliver/STOPPD_Long_FC/results/clinxtime_withbetconn.csv")
+
+```
+
+```{r}
+# plot clinical outcome x time 
+ggplot(clin_conn_long[clin_conn_long$ClinicalOutcome != "Off protocol",], aes(x=model_days, y=Bet_Vis2, fill = ClinicalOutcome)) + 
+  geom_point(aes(shape = RandomArm)) + 
+  geom_line(aes(group=STUDYID, color = ClinicalOutcome), alpha = 0.5) + 
+  geom_smooth(aes(color = ClinicalOutcome), method="lm", fill = "grey40") +
+  labs(x ="Days between MRIs", 
+       y = "Secondary Visual Between-Network Connectivity",
+       shape = "Group",
+       color = "Clinical Outcome") +
+  guides(fill=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:23)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+ggplot(clin_conn_long[clin_conn_long$ClinicalOutcome != "Off protocol",], aes(x=model_days, y=Bet_Aud, fill = ClinicalOutcome)) + 
+  geom_point(aes(shape = RandomArm)) + 
+  geom_line(aes(group=STUDYID, color = ClinicalOutcome), alpha = 0.5) + 
+  geom_smooth(aes(color = ClinicalOutcome), method="lm", fill = "grey40") +
+  labs(x ="Days between MRIs", 
+       y = "Auditory Between-Network Connectivity",
+       shape = "Group",
+       color = "Clinical Outcome") +
+  guides(fill=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:23)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
+
+```{r}
+# plot clinical outcome x time - olanzapine only - extra figs (not in paper)
+ggplot(clin_conn_long[clin_conn_long$RandomArm=="Olanzapine",], aes(x=model_days, y=Bet_Vis2, fill = PlotLabel)) + 
+  geom_point(aes(shape = PlotLabel)) + 
+  geom_line(aes(group=STUDYID, color = PlotLabel), alpha = 0.5) + 
+  geom_smooth(aes(color = PlotLabel), method="lm", fill = "lightgrey") +
+  labs(x ="Days between MRIs", 
+       y = "Secondary Visual Between-Network Connectivity",
+       #shape = "Status at scan 2",
+       color = "Clinical Outcome") +
+  guides(fill=FALSE, shape=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:24)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+# plot clinical outcome x time - placebo only 
+ggplot(clin_conn_long[clin_conn_long$RandomArm=="Placebo",], aes(x=model_days, y=Bet_Vis2, fill = PlotLabel)) + 
+  geom_point(aes(shape = PlotLabel)) + 
+  geom_line(aes(group=STUDYID, color = PlotLabel), alpha = 0.5) + 
+  geom_smooth(aes(color = PlotLabel), method="lm", fill = "lightgrey") +
+  labs(x ="Days between MRIs", 
+       y = "Secondary Visual Between-Network Connectivity",
+       #shape = "Status at scan 2",
+       color = "Clinical Outcome") +
+  guides(fill=FALSE, shape=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:24)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
 
 ```{r}
 # table one in relapsers only
@@ -995,7 +1090,200 @@ print(rel_df)
 ```
 
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r}
+# exploratory analyses - examine corrs with Bet_Vis2 conn - in case reviewers ask (not including in paper submission)
+# read in clinical data including lifetime episodes 
+stpd_clin_eps <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/pilot_data/data/STOPPD_clinical_fc_pilot.csv", header=T) %>%
+  mutate(STUDYID = as.character(STUDYID),
+         dateDiff = as.numeric(dateDiff),
+         site = as.factor(site),
+         RandomArm = factor(randomization, 
+                           levels = c("O", "P"), labels = c("Olanzapine", "Placebo")),
+         sex = factor(sex, levels = c("M", "F"), labels = c("Male", "Female")),
+         ClinicalOutcome = factor(ClinicalOutcome, 
+                             levels = c("Remission","Relapse", "Off protocol")),
+         PlotLabel = factor(PlotLabel, 
+                       levels = c("Sustained Remisson","Relapse", "Discontinued_Remission"),
+                       labels = c("Sustained Remisson","Relapse", "Discontinued")),
+         RelapseHam10 = factor(RelapseHam10,
+                               levels = c("Yes","No"), labels = c("Hamd_Rel","Hamd_Rem")),
+         Episodes = factor(SCIDS4f,
+                               order=TRUE, levels = c("1","2","3","4"), labels = c("1","2-3",">3",">1unk>3"))) 
+
+
+# exclude 210012 (116 TRs vs 206), 210013 (116 TRs), 220002 (116 TRs), and 320006 (146 TRs) due to incomplete RS ses-01 data
+# 220002 also has incomplete RS ses-02 data (116 TRs)  
+stpd_clin_eps <- stpd_clin_eps[stpd_clin_eps$STUDYID!="210012" & stpd_clin_eps$STUDYID!="210013" & stpd_clin_eps$STUDYID!="220002" & stpd_clin_eps$STUDYID!="320006",]
+
+# exclude 410012 and 320032 due to intracranial findings
+stpd_clin_eps <- stpd_clin_eps[stpd_clin_eps$STUDYID!="410012" & stpd_clin_eps$STUDYID!="320032",]
+
+# read in csv with CORE factor scores
+stpd_core <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/data/raw/COREDomainInputDataset_Apr12-21.csv", header=T) 
+colnames(stpd_core)[1] <- "STUDYID"
+        
+# add prior episode variables to conn data
+clin_conn_comb_eps <- merge(clin_conn_comb, stpd_clin_eps[,c("STUDYID","SCIDS4f","Episodes")],by="STUDYID")
+
+# add CORE factor scores to conn data
+# CORE[xx]_BL refers to acute baseline, CORE[xx]_Stab refers to RCT baseline
+# CORETot_NI  total score on the non-interactivity factor items
+# CORETot_RT- total score on the retardation factor items
+# CORETot_AG- total score on the agitation factor items
+# CORETot_NIRT- combined score on the non-interactivity and retardation factor items
+clin_conn_comb_eps <- merge(clin_conn_comb_eps, stpd_core[,c("STUDYID","CORETot_Stab","CORETot_NI_Stab","CORETot_RT_Stab",
+                                                             "CORETot_AG_Stab","CORETot_NIRT_Stab")],by="STUDYID")
+
+# Change scores of clear outlier for CORETot (19) and CORENonInteractive (10) to NAs
+clin_conn_comb_eps[clin_conn_comb_eps$STUDYID=="420043",c("CORETot_Stab","CORETot_NI_Stab")] <- NA
+
+```
+
+```{r}
+# exploratory analyses - examine correlations between Bet_Vis2 conn and CORE Total
+cor.test(clin_conn_comb_eps$CORETot_Stab, clin_conn_comb_eps$Bet_Vis2_diff)
+cor.test(clin_conn_comb_eps$CORETot_Stab, clin_conn_comb_eps$Bet_Vis2_t1)
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_Stab, y=Bet_Vis2_diff, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Total", 
+       y = "Secondary Visual Between-Network Connectivity (T2-T1)",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_Stab, y=Bet_Vis2_t1, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Total", 
+       y = "Secondary Visual Between-Network Connectivity T1",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
+
+```{r}
+# exploratory analyses - examine correlations between Bet_Vis2 conn and CORE Non-interactivity
+cor.test(clin_conn_comb_eps$CORETot_NI_Stab, clin_conn_comb_eps$Bet_Vis2_diff) # also NS in placebo only
+cor.test(clin_conn_comb_eps$CORETot_NI_Stab, clin_conn_comb_eps$Bet_Vis2_t1)
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_NI_Stab, y=Bet_Vis2_diff, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Non-interactivity", 
+       y = "Secondary Visual Between-Network Connectivity (T2-T1)",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_NI_Stab, y=Bet_Vis2_t1, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Non-interactivity", 
+       y = "Secondary Visual Between-Network Connectivity T1",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
+
+```{r}
+# exploratory analyses - examine correlations between Bet_Vis2 conn and CORE Retardation
+cor.test(clin_conn_comb_eps$CORETot_RT_Stab, clin_conn_comb_eps$Bet_Vis2_diff)
+cor.test(clin_conn_comb_eps$CORETot_RT_Stab, clin_conn_comb_eps$Bet_Vis2_t1)
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_RT_Stab, y=Bet_Vis2_diff, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Retardation", 
+       y = "Secondary Visual Between-Network Connectivity (T2-T1)",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_RT_Stab, y=Bet_Vis2_t1, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Retardation", 
+       y = "Secondary Visual Between-Network Connectivity T1",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
+
+```{r}
+# exploratory analyses - examine correlations between Bet_Vis2 conn and CORE Agitation
+cor.test(clin_conn_comb_eps$CORETot_AG_Stab, clin_conn_comb_eps$Bet_Vis2_diff)
+cor.test(clin_conn_comb_eps$CORETot_AG_Stab, clin_conn_comb_eps$Bet_Vis2_t1)
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_AG_Stab, y=Bet_Vis2_diff, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Agitation", 
+       y = "Secondary Visual Between-Network Connectivity (T2-T1)",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+ggplot(clin_conn_comb_eps, aes(x=CORETot_AG_Stab, y=Bet_Vis2_t1, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="CORE Agitation", 
+       y = "Secondary Visual Between-Network Connectivity T1",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
+
+```{r}
+# exploratory analyses - examine correlations between Bet_Vis2 conn and lifetime episodes
+cor.test(clin_conn_comb_eps$SCIDS4f, clin_conn_comb_eps$Bet_Vis2_diff)
+cor.test(clin_conn_comb_eps$SCIDS4f, clin_conn_comb_eps$Bet_Vis2_t1)
+
+ggplot(clin_conn_comb_eps, aes(x=SCIDS4f, y=Bet_Vis2_diff, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="Lifetime Episodes", 
+       y = "Secondary Visual Between-Network Connectivity (T2-T1)",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+ggplot(clin_conn_comb_eps, aes(x=SCIDS4f, y=Bet_Vis2_t1, color = RandomArm)) + 
+  geom_point() + 
+  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") + 
+  labs(x ="Lifetime Episodes", 
+       y = "Secondary Visual Between-Network Connectivity T1",
+       color = "Group") +
+  scale_colour_manual(values = RandomArmColors) +
+  scale_fill_manual(values = RandomArmColors) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+
+```
+
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
 
