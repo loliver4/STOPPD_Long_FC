@@ -32,6 +32,9 @@ stpd_clin <- read.csv(file = "/projects/loliver/STOPPD_Long_FC/data/raw/STOPPD_c
                        levels = c("Sustained Remisson","Relapse", "Discontinued_Remission"),
                        labels = c("Sustained Remisson","Relapse", "Discontinued"))) 
 
+# drop added hamd scores so as not to interfere with for loops below
+stpd_clin <- stpd_clin[,c(1:8,12)]
+
 # exclude 210012 (116 TRs vs 206), 210013 (116 TRs), 220002 (116 TRs), and 320006 (146 TRs) due to incomplete RS ses-01 data
 # 220002 also has incomplete RS ses-02 data (116 TRs)  
 stpd_clin <- stpd_clin[stpd_clin$STUDYID!="210012" & stpd_clin$STUDYID!="210013" & stpd_clin$STUDYID!="220002" & stpd_clin$STUDYID!="320006",]
@@ -526,6 +529,104 @@ print(rem_tr_sens3_df)
 
 ```
 
+
+```{r}
+# exploratory analyses - mixed linear model - graph metrics clinical outcome x time for all networks (excluding off protocol N=53; not a meaningful clinical outcome)
+
+# print full model outputs
+
+# primary analyses - GE clinical outcome x time in full group
+exp_ge <- clin_gt_15 %>%
+    gather(oldcolname, ge, ge_t1, ge_t2) %>%
+    mutate(model_days = if_else(oldcolname == "ge_t1", 1, dateDiff))
+
+exp_ge_lmer <- lmer(ge ~ ClinicalOutcome*model_days + sex + age + (1|site) + (1|STUDYID), data = exp_ge[exp_ge$ClinicalOutcome != "Off protocol",])
+summary(exp_ge_lmer)
+
+# primary analyses - CC clinical outcome x time in full group
+exp_cc <- clin_gt_15 %>%
+    gather(oldcolname, cc, cc_t1, cc_t2) %>%
+    mutate(model_days = if_else(oldcolname == "cc_t1", 1, dateDiff))
+
+exp_cc_lmer <- lmer(cc ~ ClinicalOutcome*model_days + sex + age + (1|site) + (1|STUDYID), data = exp_cc[exp_cc$ClinicalOutcome != "Off protocol",])
+summary(exp_cc_lmer)  
+
+# transitivity clinical outcome x time in full group
+exp_trans <- clin_gt_15 %>%
+    gather(oldcolname, trans, trans_t1, trans_t2) %>%
+    mutate(model_days = if_else(oldcolname == "trans_t1", 1, dateDiff))
+
+exp_trans_lmer <- lmer(trans ~ ClinicalOutcome*model_days + sex + age + (1|site) + (1|STUDYID), data = exp_trans[exp_trans$ClinicalOutcome != "Off protocol",])
+summary(exp_trans_lmer)
+
+# characteristic path length clinical outcome x time in full group
+exp_cpl <- clin_gt_15 %>%
+    gather(oldcolname, cpl, cpl_t1, cpl_t2) %>%
+    mutate(model_days = if_else(oldcolname == "cpl_t1", 1, dateDiff))
+
+exp_cpl_lmer <- lmer(cpl ~ ClinicalOutcome*model_days + sex + age + (1|site) + (1|STUDYID), data = exp_cpl[exp_cpl$ClinicalOutcome != "Off protocol",])
+summary(exp_cpl_lmer)
+
+# modularity clinical outcome x time in full group
+exp_q <- clin_gt_15 %>%
+    gather(oldcolname, q, q_t1, q_t2) %>%
+    mutate(model_days = if_else(oldcolname == "q_t1", 1, dateDiff))
+
+exp_q_lmer <- lmer(q ~ ClinicalOutcome*model_days + sex + age + (1|site) + (1|STUDYID), data = exp_q[exp_q$ClinicalOutcome != "Off protocol",])
+summary(exp_q_lmer)
+
+```
+
+```{r}
+# generate df with stats for clinical outcome x time interaction 
+clinxti_df <- data.frame(rbind(summary(exp_ge_lmer)[[10]][6,],summary(exp_cc_lmer)[[10]][6,],summary(exp_trans_lmer)[[10]][6,],summary(exp_q_lmer)[[10]][6,]))
+rownames(clinxti_df) <- c("ge","cc","trans","mod")
+colnames(clinxti_df) <- c("beta","SE","df","t","p")
+
+# add fdr-corrected p values and reorder columns 
+clinxti_df$p_fdr <- p.adjust(clinxti_df$p, method = "fdr")
+clinxti_df <- clinxti_df[,c(1,2,4,3,5,6)]
+
+print(clinxti_df)
+
+#write.csv(clinxti_df,file="/projects/loliver/STOPPD_Long_FC/results/clinxtime_graphmets.csv")
+
+```
+
+```{r}
+# plot of change in mod clinical outcome x time - all NS
+ggplot(exp_q[exp_q$ClinicalOutcome != "Off protocol",], aes(x=model_days, y=q, fill = ClinicalOutcome)) + 
+  geom_point(aes(shape = RandomArm)) + 
+  geom_line(aes(group=STUDYID, color = ClinicalOutcome), alpha = 0.5) + 
+  geom_smooth(aes(color = ClinicalOutcome), method="lm", fill = "grey40") +
+  labs(x ="Days between MRIs", 
+       y = "Modularity",
+       shape = "Group",
+       color = "Clinical Outcome") +
+  guides(fill=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:23)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+  
+# plot of change in CC clinical outcome x time 
+ggplot(exp_trans[exp_trans$ClinicalOutcome != "Off protocol",], aes(x=model_days, y=trans, fill = ClinicalOutcome)) + 
+  geom_point(aes(shape = RandomArm)) + 
+  geom_line(aes(group=STUDYID, color = ClinicalOutcome), alpha = 0.5) + 
+  geom_smooth(aes(color = ClinicalOutcome), method="lm", fill = "grey40") +
+  labs(x ="Days between MRIs", 
+       y = "Transitivity",
+       shape = "Group",
+       color = "Clinical Outcome") +
+  guides(fill=FALSE) +
+  scale_colour_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_fill_manual(values = c("springgreen1","mediumpurple1","lightpink")) +
+  scale_shape_manual(values = c(21:23)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+  
+```
 
 ```{r}
 # exploratory analysis - treatment in relapsers only # N=21
