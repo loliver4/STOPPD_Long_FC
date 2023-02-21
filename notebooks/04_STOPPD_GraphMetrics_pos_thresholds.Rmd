@@ -1,9 +1,9 @@
 ---
-title: "02_STOPPD_GraphMetrics_pos_thresholds"
+title: "STOPPD_GraphMetrics_pos_thresholds"
 output: html_notebook
 ---
 
-# STOP-PD functional analyses with BCT graph metrics using proportional thresholding (negative values eliminated) from 15-35%
+# STOP-PD functional analyses with BCT graph metrics using proportional thresholding (negative values eliminated) from 5-35%
 
 ```{r}
 library(tidyr)
@@ -93,9 +93,9 @@ for (i in names(conn_gt)) {
 ```
 
 ```{r}
-# analyses as per the JAMA psych paper (following Erin's github) 
+# analyses as per the JAMA psych paper (https://github.com/TIGRLab/STOPPD-MainPaper/) 
 
-# Erin's plot colours
+# plot colours
 RandomArmColors = c("#e6ab02", "#386cb0")
 
 # make difference scores
@@ -248,25 +248,6 @@ print(trxti_q)
 ```
 
 
-```{r eval=F}
-# plot of change in GE treatment arm x time - skipped for now 
-ggplot(all_ge, aes(x=model_days, y=ge, fill = RandomArm)) + 
-  geom_point(aes(shape = PlotLabel)) + 
-  geom_line(aes(group=STUDYID, color = RandomArm), alpha = 0.5) + 
-  geom_smooth(aes(color = RandomArm), method="lm", fill = "grey40") +
-  labs(x ="Days between MRIs", 
-       y = "Global Efficiency",
-       shape = "Status at scan 2",
-       color = "Group") +
-  scale_colour_manual(values = RandomArmColors) +
-  scale_fill_manual(values = RandomArmColors) +
-  scale_shape_manual(values = c(21:23)) +
-  theme_bw() +
-  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
-
-```
-
-
 ```{r}
 # secondary analyses - graph metrics treatment in remitters only (sustained remission, discontinuers removed) # N=30
 
@@ -396,45 +377,4 @@ print(rem_tr_q)
 ```
 
 
-```{r fig.height=4, fig.width=7, eval=F}
-# boxplot of difference in graph metrics (y axis) by RandomArm group (x axis) in remitters only - skipped for now - could update to show across densities
 
-rem_conn_15 %>% 
-  gather(gt_metric, change, ge_diff, cc_diff, trans_diff, q_diff) %>%
-ggplot(aes(x= RandomArm, y = change, fill = RandomArm)) + 
-     geom_boxplot(outlier.shape = NA, alpha = 0.0001) + 
-     geom_dotplot(binaxis = 'y', stackdir = 'center') +
-     geom_hline(yintercept = 0) +
-     labs( x=NULL,      
-           y = bquote('Change in Graph Metric'),
-           fill = "Group") +
-     scale_fill_manual(values = RandomArmColors) +
-     scale_shape_manual(values = c(21)) +
-     facet_wrap(~gt_metric) +
-     theme_bw() +
-     theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
-
-
-# global efficiency only
-ggplot(rem_conn_15, aes(x= RandomArm, y = ge_diff, fill = RandomArm)) + 
-     geom_boxplot(outlier.shape = NA, alpha = 0.0001) + 
-     geom_dotplot(binaxis = 'y', stackdir = 'center') +
-     geom_hline(yintercept = 0) +
-     labs( x=NULL,      
-           y = bquote('Change in Global Efficiency'),
-           fill = "Group") +
-     scale_fill_manual(values = RandomArmColors) +
-     scale_shape_manual(values = c(21)) +
- #    facet_wrap(~Region) + could use for densities
-     theme_bw() +
-     theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
-
-```
-
-
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
