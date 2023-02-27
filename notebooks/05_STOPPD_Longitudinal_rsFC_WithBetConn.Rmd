@@ -354,36 +354,6 @@ clin_conn_long$model_days <- ifelse(clin_conn_long$time == "t1", 1, clin_conn_lo
 
 ```
 
-```{r Explore data}
-# check out distributions and check for outliers 
-clin_conn_long_t1_melt <- melt(clin_conn_long_t1[,c(1,5,10:35)])
-
-ggplot(data = clin_conn_long_t1_melt, mapping = aes(x = value)) + 
-  geom_histogram(bins = 10) + facet_wrap(~variable, scales = 'free_x')
-
-sapply(clin_conn_long_t1[,c(5,10:35)],shapiro.test)
-
-# identify adj boxplot outliers for each column of interest ###################### probably cut??
-outlist_t1 <- list()
-
-for (i in colnames(clin_conn_long_t1[,c(5,10:35)])) {  
-  outlist_t1[[i]] <-
-    as.vector(clin_conn_long_t1[(clin_conn_long_t1[[i]] %in% (adjboxStats(clin_conn_long_t1[[i]], coef = 1.5, a = -4, b = 3, do.conf = TRUE, do.out = TRUE)$out)),i])
-} # 1 to see IDs; i to see values 
-
-print(outlist_t1)
-
-# remove outliers with adjusted boxplot criteria - can decide whether or not to do this 
-
-#rtms_df_out <- rtms_df
-
-#for (i in names(outlist)) {
-#  rtms_df_out[rtms_df_out$record_id %in% outlist[[i]], i] <- NA
-#}
-
-
-```
-
 # Primary analysis treatment x time
 
 ```{r Primary analysis treatment x time}
