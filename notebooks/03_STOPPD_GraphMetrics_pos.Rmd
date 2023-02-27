@@ -71,6 +71,35 @@ clin_gt_15 <- clin_gt_15[,c(1:9,11,10,12,14,13,16,15,17,19,18)]
 ```
 
 ```{r}
+# data exploration 
+library(reshape2)
+library(car)
+
+# check out baseline distributions 
+conn_gt_15_t1_melt <- melt(conn_gt_15_t1)
+
+ggplot(data = conn_gt_15_t1_melt, mapping = aes(x = value)) + 
+  geom_histogram(bins = 10) + facet_wrap(~variable, scales = 'free_x')
+
+sapply(conn_gt_15_t1[,c(2:6)],shapiro.test) # all NS
+
+# check out longitudinal distributions 
+conn_gt_15_t2_melt <- melt(conn_gt_15_t2)
+
+ggplot(data = conn_gt_15_t2_melt, mapping = aes(x = value)) + 
+  geom_histogram(bins = 10) + facet_wrap(~variable, scales = 'free_x')
+
+sapply(conn_gt_15_t2[,c(2:6)],shapiro.test) # all NS
+
+# Levene's test for homogeneity of variance - all NS 
+for (i in colnames(clin_gt_15[,10:19])) {
+  print(i)
+  assign(paste0("lev_",i), leveneTest(clin_gt_15[,i], clin_gt_15$RandomArm, center = mean)) %>% print()
+}
+
+```
+
+```{r}
 # analyses as per the JAMA psych paper (https://github.com/TIGRLab/STOPPD-MainPaper/) 
 
 # plot colours
